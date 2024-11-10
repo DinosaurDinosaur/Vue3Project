@@ -4,7 +4,7 @@
       <div class="q-mb-xl">
         <q-input v-model="tempData.name" label="姓名" />
         <q-input v-model="tempData.age" label="年齡" />
-        <q-btn color="primary" class="q-mt-md">新增</q-btn>
+        <q-btn color="primary" class="q-mt-md" @click="addData">新增</q-btn>
       </div>
 
       <q-table
@@ -35,7 +35,7 @@
               :props="props"
               style="min-width: 120px"
             >
-              <div>{{ col.value }}</div>
+              <div>{{ props.row[col.field] }}</div>
             </q-td>
             <q-td class="text-right" auto-width v-if="tableButtons.length > 0">
               <q-btn
@@ -80,18 +80,22 @@
 <script setup lang="ts">
 import axios from 'axios';
 import { QTableProps } from 'quasar';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+
 interface btnType {
   label: string;
   icon: string;
   status: string;
 }
-const blockData = ref([
-  {
-    name: 'test',
-    age: 25,
-  },
-]);
+
+const API_URL = 'https://dahua.metcfire.com.tw/api/CRUDTest';
+
+const blockData = ref([]);
+const tempData = ref({
+  name: '',
+  age: '',
+});
+
 const tableConfig = ref([
   {
     label: '姓名',
@@ -106,6 +110,7 @@ const tableConfig = ref([
     align: 'left',
   },
 ]);
+
 const tableButtons = ref([
   {
     label: '編輯',
@@ -119,13 +124,66 @@ const tableButtons = ref([
   },
 ]);
 
-const tempData = ref({
-  name: '',
-  age: '',
-});
-function handleClickOption(btn, data) {
-  // ...
-}
+// Function to fetch data from API
+const fetchData = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/a`);
+    blockData.value = response.data;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+};
+
+// Function to add new data
+const addData = async () => {
+  if (!tempData.value.name || !tempData.value.age) {
+    alert("請填寫姓名和年齡");
+    return;
+  }
+  try {
+    const response = await axios.post(API_URL, tempData.value);
+    blockData.value.push(response.data);
+    tempData.value.name = '';
+    tempData.value.age = '';
+  } catch (error) {
+    console.error("Error adding data:", error);
+  }
+};
+
+// Function to update data
+const updateData = async (id) => {
+  try {
+    await axios.patch(`${API_URL}/${id}`, tempData.value);
+    await fetchData();
+    tempData.value.name = '';
+    tempData.value.age = '';
+  } catch (error) {
+    console.error("Error updating data:", error);
+  }
+};
+
+// Function to delete data
+const deleteData = async (id) => {
+  try {
+    await axios.delete(`${API_URL}/${id}`);
+    blockData.value = blockData.value.filter((item) => item.id !== id);
+  } catch (error) {
+    console.error("Error deleting data:", error);
+  }
+};
+
+// Function to handle button actions
+const handleClickOption = (btn, data) => {
+  if (btn.status === 'edit') {
+    tempData.value = { name: data.name, age: data.age };
+    updateData(data.id); // Call update function
+  } else if (btn.status === 'delete') {
+    deleteData(data.id); // Call delete function
+  }
+};
+
+// Fetch data when the component is mounted
+onMounted(fetchData);
 </script>
 
 <style lang="scss" scoped>
